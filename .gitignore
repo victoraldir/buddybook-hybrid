@@ -1,0 +1,62 @@
+# Flutter
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+pubspec.lock
+build/
+
+# Android
+android/app/debug/
+android/app/profile/
+android/app/release/
+android/gradlew
+android/gradlew.bat
+android/gradle/wrapper/gradle-wrapper.jar
+android/gradle/wrapper/gradle-wrapper.properties
+
+# iOS
+ios/Flutter/Flutter.podspec
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.xcframework
+ios/Flutter/flutter_export_environment.sh
+ios/Pods/
+ios/Podfile.lock
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Generated files
+lib/generated/
+
+# Secrets & API keys
+.env
+.env.local
+.env*.local
+!.env.example
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
+**/service-account*.json
+remote_config_*.json
+*_credentials.json
+*_secrets.json
+
+# Test coverage
+coverage/
+*.lcov
+
+# Misc
+*.log
+*.pyc
+*.cache
+.firebase/
+.metadata
+users_backup.json
+deps.txt
+android/deps.txt
+android/app/CMakeCache.txt

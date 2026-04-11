@@ -1,0 +1,52 @@
+default_platform(:android)
+
+platform :android do
+  desc "Run Flutter tests"
+  lane :test do
+    Dir.chdir("..") do
+      sh("flutter", "test")
+    end
+  end
+
+  desc "Build a debug APK"
+  lane :build_debug do
+    Dir.chdir("..") do
+      sh("flutter", "build", "apk", "--debug")
+    end
+  end
+
+  desc "Build a release AAB"
+  lane :build_release do
+    Dir.chdir("..") do
+      sh("flutter", "build", "appbundle", "--release")
+    end
+  end
+
+  desc "Deploy to Google Play internal track"
+  lane :deploy do
+    Dir.chdir("..") do
+      sh("flutter", "build", "appbundle", "--release")
+    end
+
+    upload_to_play_store(
+      track: "internal",
+      aab: "../build/app/outputs/bundle/release/app-release.aab",
+      json_key: "play-store-credentials.json",
+      package_name: "com.quartzodev.buddybook",
+      skip_upload_metadata: true,
+      skip_upload_images: true,
+      skip_upload_screenshots: true
+    )
+  end
+
+  desc "Promote internal to production"
+  lane :promote_to_production do
+    upload_to_play_store(
+      track: "internal",
+      track_promote_to: "production",
+      json_key: "play-store-credentials.json",
+      package_name: "com.quartzodev.buddybook",
+      skip_upload_changelogs: true
+    )
+  end
+end

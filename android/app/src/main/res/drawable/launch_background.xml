@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- BuddyBook splash screen: teal background with centered white logo -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android"
+    android:opacity="opaque">
+    <item android:drawable="@color/colorPrimary" />
+    <item>
+        <bitmap
+            android:gravity="center"
+            android:src="@drawable/logo_white_splash"
+            android:filter="true" />
+    </item>
+</layer-list>

@@ -1,0 +1,122 @@
+name: buddybook_flutter
+description: A Flutter book management app with lending and organization features
+
+publish_to: 'none'
+
+version: 1.0.1+6
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.6
+  
+  # Firebase Suite
+  firebase_core: ^4.5.0
+  firebase_auth: ^6.2.0
+  firebase_database: ^12.1.4
+  firebase_remote_config: ^6.2.0
+  firebase_storage: ^13.1.0
+  firebase_crashlytics: ^5.0.8
+  firebase_analytics: ^12.1.3
+  firebase_app_check: ^0.4.2
+  
+  # State Management
+  provider: ^6.0.0
+  flutter_bloc: ^9.1.1
+  
+  # Data Models
+  freezed_annotation: ^3.1.0
+  json_annotation: ^4.8.0
+  equatable: ^2.0.5
+  
+  # Networking
+  dio: ^5.3.0
+  retrofit: ^4.0.0
+  
+  # UI & Navigation
+  go_router: ^17.1.0
+  material_design_icons_flutter: ^7.0.0
+  
+  # Camera & Barcode
+  camera: ^0.11.0+2
+  image_picker: ^1.0.4
+  mobile_scanner: ^7.2.0
+  
+  # Image Handling
+  cached_network_image: ^3.3.0
+  
+  # Storage
+  shared_preferences: ^2.2.1
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
+  
+  # DI & Service Locator
+  get_it: ^9.2.1
+  
+  # Utilities
+  intl: ^0.20.2
+  dartz: ^0.10.1
+  uuid: ^4.0.0
+  connectivity_plus: ^7.0.0
+  package_info_plus: ^9.0.0
+  logger: ^2.0.0
+  
+  # Export
+  csv: ^7.2.0
+  path_provider: ^2.1.1
+  share_plus: ^12.0.1
+  
+  # Social Login (Google only)
+  google_sign_in: ^7.2.0
+  
+  # URL & Navigation
+  url_launcher: ^6.2.0
+  
+  # In-App Purchase
+  in_app_purchase: ^3.1.0
+
+  # AI Chat
+  google_generative_ai: ^0.4.7
+  flutter_ai_toolkit: ^1.0.0
+  firebase_ai: ^3.10.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_driver:
+    sdk: flutter
+  
+  # Integration Testing
+  integration_test:
+    sdk: flutter
+  
+  # Mocking for unit tests
+  mockito: ^5.4.4
+  
+  # Code Generation
+  build_runner: ^2.4.6
+  freezed: ^3.2.5
+  json_serializable: ^6.7.0
+  
+  # Launcher Icons
+  flutter_launcher_icons: ^0.14.4
+  
+  # Linting
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  
+  assets:
+    - assets/images/
+    - assets/icons/
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/icons/app_icon.png"
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/icons/app_icon_foreground.png"

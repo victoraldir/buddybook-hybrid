@@ -1,0 +1,20 @@
+{
+  "rules": {
+    "users": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    },
+    "purchaseTokens": {
+      "$purchaseToken": {
+        ".read": "root.child('users').child(auth.uid).exists()",
+        ".write": "root.child('users').child(auth.uid).exists() || root.child('users').child(data.child('userId').val()).exists()"
+      }
+    },
+    "deletion_requests": {
+      ".read": false,
+      ".write": true
+    }
+  }
+}
