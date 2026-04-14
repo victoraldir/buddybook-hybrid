@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../providers/auth_state_provider.dart';
+import '../../blocs/auth/auth_bloc.dart';
+import '../../blocs/auth/auth_event.dart';
+import '../../blocs/auth/auth_state.dart';
 import '../../widgets/auth/email_input_field.dart';
 import '../../widgets/auth/password_input_field.dart';
 
@@ -45,24 +47,21 @@ class _LoginPageState extends State<LoginPage> {
         elevation: 0,
         backgroundColor: Colors.transparent,
       ),
-      body: Consumer<AuthStateProvider>(
-        builder: (context, authProvider, _) {
-          if (authProvider.errorMessage != null) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(authProvider.errorMessage!),
-                  backgroundColor: Colors.red,
-                  action: SnackBarAction(
-                    label: 'Dismiss',
-                    onPressed: () {
-                      authProvider.clearError();
-                    },
-                  ),
-                ),
-              );
-            });
+      body: BlocConsumer<AuthBloc, AuthState>(
+        listener: (context, state) {
+          if (state is AuthError) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(state.message),
+                backgroundColor: Colors.red,
+              ),
+            );
+          } else if (state is Authenticated) {
+            context.go('/home');
           }
+        },
+        builder: (context, state) {
+          final isLoading = state is AuthLoading;
 
           return SingleChildScrollView(
             child: Padding(
@@ -102,7 +101,7 @@ class _LoginPageState extends State<LoginPage> {
                     controller: _passwordController,
                     focusNode: _passwordFocus,
                     onFieldSubmitted: (_) {
-                      _handleSignIn(context, authProvider);
+                      _handleSignIn(context);
                     },
                   ),
                   const SizedBox(height: 8),
@@ -119,10 +118,8 @@ class _LoginPageState extends State<LoginPage> {
 
                   // Sign In Button
                   ElevatedButton(
-                    onPressed: authProvider.isLoading
-                        ? null
-                        : () => _handleSignIn(context, authProvider),
-                    child: authProvider.isLoading
+                    onPressed: isLoading ? null : () => _handleSignIn(context),
+                    child: isLoading
                         ? const SizedBox(
                             height: 20,
                             width: 20,
@@ -150,9 +147,9 @@ class _LoginPageState extends State<LoginPage> {
 
                   // Google Sign In Button
                   OutlinedButton.icon(
-                    onPressed: authProvider.isLoading
+                    onPressed: isLoading
                         ? null
-                        : () => _handleGoogleSignIn(context, authProvider),
+                        : () => _handleGoogleSignIn(context),
                     icon: const Text('G'),
                     label: const Text('Sign in with Google'),
                   ),
@@ -178,15 +175,11 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  Future<void> _handleSignIn(
-    BuildContext context,
-    AuthStateProvider authProvider,
-  ) async {
+  Future<void> _handleSignIn(BuildContext context) async {
     final email = _emailController.text.trim();
     final password = _passwordController.text;
 
     if (email.isEmpty || password.isEmpty) {
-      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Please fill in all fields'),
@@ -196,22 +189,12 @@ class _LoginPageState extends State<LoginPage> {
       return;
     }
 
-    final success = await authProvider.signIn(
-      email: email,
-      password: password,
-    );
-    if (success && context.mounted) {
-      context.go('/home');
-    }
+    context.read<AuthBloc>().add(
+          AuthSignInRequested(email: email, password: password),
+        );
   }
 
-  Future<void> _handleGoogleSignIn(
-    BuildContext context,
-    AuthStateProvider authProvider,
-  ) async {
-    final success = await authProvider.signInWithGoogle();
-    if (success && context.mounted) {
-      context.go('/home');
-    }
+  Future<void> _handleGoogleSignIn(BuildContext context) async {
+    context.read<AuthBloc>().add(AuthSignInWithGoogleRequested());
   }
 }

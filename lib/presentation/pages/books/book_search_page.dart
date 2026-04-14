@@ -9,10 +9,11 @@ import '../../../core/di/service_locator.dart';
 import '../../../core/utils/platform_utils.dart';
 import '../../../domain/entities/book.dart';
 import '../../../domain/entities/folder.dart';
-import '../../blocs/book_bloc.dart';
-import '../../blocs/book_search_bloc.dart';
-import '../../blocs/folder_bloc.dart';
-import '../../providers/auth_state_provider.dart';
+import 'package:buddybook_flutter/presentation/blocs/auth/auth_bloc.dart';
+import 'package:buddybook_flutter/presentation/blocs/auth/auth_state.dart';
+import 'package:buddybook_flutter/presentation/blocs/book_bloc.dart';
+import 'package:buddybook_flutter/presentation/blocs/book_search_bloc.dart';
+import 'package:buddybook_flutter/presentation/blocs/folder_bloc.dart';
 
 class BookSearchPage extends StatefulWidget {
   /// If an ISBN was scanned via barcode, pass it here to auto-search
@@ -41,8 +42,10 @@ class _BookSearchPageState extends State<BookSearchPage> {
     _searchController = TextEditingController();
 
     // Fetch folders for the "add to folder" dialog
-    final authProvider = context.read<AuthStateProvider>();
-    _folderBloc.add(FetchUserFoldersEvent(userId: authProvider.user!.uid));
+    final authState = context.read<AuthBloc>().state;
+    if (authState is Authenticated) {
+      _folderBloc.add(FetchUserFoldersEvent(userId: authState.user.uid));
+    }
 
     // If we have an ISBN from barcode scan, search immediately
     if (widget.initialIsbn != null) {
@@ -146,11 +149,13 @@ class _BookSearchPageState extends State<BookSearchPage> {
   }
 
   void _addBookToFolder(Book book, String folderId) {
-    final authProvider = context.read<AuthStateProvider>();
+    final authState = context.read<AuthBloc>().state;
+    if (authState is! Authenticated) return;
+    
     final bookWithFolder = book.copyWith(folderId: folderId);
 
     _bookBloc.add(CreateBookEvent(
-      userId: authProvider.user!.uid,
+      userId: authState.user.uid,
       book: bookWithFolder,
     ));
 

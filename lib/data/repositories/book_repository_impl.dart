@@ -6,11 +6,13 @@ import '../../domain/entities/book.dart';
 import '../../domain/repositories/book_repository.dart';
 import '../datasources/book_remote_data_source.dart';
 import '../models/book_model.dart';
+import '../../core/services/logging_service.dart';
 
 class BookRepositoryImpl implements BookRepository {
   final BookRemoteDataSource remoteDataSource;
+  final LoggingService? logger;
 
-  BookRepositoryImpl({required this.remoteDataSource});
+  BookRepositoryImpl({required this.remoteDataSource, this.logger});
 
   @override
   Future<Either<Failure, List<Book>>> fetchUserBooks(String userId) async {
@@ -22,7 +24,8 @@ class BookRepositoryImpl implements BookRepository {
       return Left(FirebaseFailure(message: e.message));
     } on app_exceptions.AppException catch (e) {
       return Left(AppFailure(message: e.message));
-    } catch (e) {
+    } catch (e, stackTrace) {
+      logger?.error('Failed to fetch books', e, stackTrace);
       return Left(UnknownFailure(message: 'Failed to fetch books: $e'));
     }
   }

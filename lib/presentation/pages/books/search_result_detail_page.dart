@@ -7,9 +7,10 @@ import 'package:go_router/go_router.dart';
 import '../../../core/di/service_locator.dart';
 import '../../../domain/entities/book.dart';
 import '../../../domain/entities/folder.dart';
-import '../../blocs/book_bloc.dart';
-import '../../blocs/folder_bloc.dart';
-import '../../providers/auth_state_provider.dart';
+import 'package:buddybook_flutter/presentation/blocs/auth/auth_bloc.dart';
+import 'package:buddybook_flutter/presentation/blocs/auth/auth_state.dart';
+import 'package:buddybook_flutter/presentation/blocs/book_bloc.dart';
+import 'package:buddybook_flutter/presentation/blocs/folder_bloc.dart';
 
 /// Detail page for a book from search results (not yet saved to Firebase).
 /// Shows full book info and allows adding to a folder.
@@ -34,8 +35,10 @@ class _SearchResultDetailPageState extends State<SearchResultDetailPage> {
     _bookBloc = getIt<BookBloc>();
     _folderBloc = getIt<FolderBloc>();
 
-    final authProvider = context.read<AuthStateProvider>();
-    _folderBloc.add(FetchUserFoldersEvent(userId: authProvider.user!.uid));
+    final authState = context.read<AuthBloc>().state;
+    if (authState is Authenticated) {
+      _folderBloc.add(FetchUserFoldersEvent(userId: authState.user.uid));
+    }
   }
 
   @override
@@ -120,11 +123,13 @@ class _SearchResultDetailPageState extends State<SearchResultDetailPage> {
       _isAdding = true;
     });
 
-    final authProvider = context.read<AuthStateProvider>();
+    final authState = context.read<AuthBloc>().state;
+    if (authState is! Authenticated) return;
+    
     final bookWithFolder = widget.book.copyWith(folderId: folderId);
 
     _bookBloc.add(CreateBookEvent(
-      userId: authProvider.user!.uid,
+      userId: authState.user.uid,
       book: bookWithFolder,
     ));
 

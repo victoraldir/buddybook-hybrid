@@ -157,14 +157,35 @@ class BookBloc extends Bloc<BookEvent, BookState> {
     UpdateBookAnnotationEvent event,
     Emitter<BookState> emit,
   ) async {
-    emit(const BookLoading());
+    // Optimistic Update: If we already have books loaded, update the local state immediately
+    final currentState = state;
+    List<Book>? previousBooks;
+
+    if (currentState is BooksLoaded) {
+      previousBooks = List.from(currentState.books);
+      final updatedBooks = currentState.books.map((book) {
+        if (book.id == event.bookId) {
+          return book.copyWith(annotation: event.annotation);
+        }
+        return book;
+      }).toList();
+      emit(BooksLoaded(books: updatedBooks));
+    }
+
     final result = await repository.updateBookAnnotation(
       event.userId,
       event.bookId,
       event.annotation,
     );
+
     result.fold(
-      (failure) => emit(BookError(message: failure.message)),
+      (failure) {
+        // Rollback on failure
+        if (previousBooks != null) {
+          emit(BooksLoaded(books: previousBooks));
+        }
+        emit(BookError(message: failure.message));
+      },
       (_) => emit(const BookAnnotationUpdated()),
     );
   }

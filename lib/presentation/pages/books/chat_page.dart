@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:firebase_ai/firebase_ai.dart';
 import 'package:flutter_ai_toolkit/flutter_ai_toolkit.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:buddybook_flutter/presentation/blocs/auth/auth_bloc.dart';
+import 'package:buddybook_flutter/presentation/blocs/auth/auth_state.dart';
 import '../../../core/di/service_locator.dart';
 import '../../../core/services/chat_persistence_service.dart';
 import '../../../core/services/subscription_service.dart';
@@ -27,27 +30,37 @@ class _ChatPageState extends State<ChatPage> {
   bool _messageLimitReached = false;
 
   final _subscriptionService = getIt<SubscriptionService>();
+  final _persistenceService = getIt<ChatPersistenceService>();
 
   String get _bookId => widget.book.id;
+  String get _userId {
+    final authState = context.read<AuthBloc>().state;
+    if (authState is Authenticated) return authState.user.uid;
+    return '';
+  }
+
   String get _sessionCountKey => 'chat_session_count';
   String get _messageCountKey => 'chat_message_count_$_bookId';
 
   @override
   void initState() {
     super.initState();
-    _initializeProvider();
+    // Use WidgetsBinding to ensure context is available for reading AuthBloc
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializeProvider();
+    });
   }
 
   Future<void> _initializeProvider() async {
     if (!_subscriptionService.isPremium) {
       final canStart = await _checkSessionLimit();
       if (!canStart) {
-        setState(() => _isBlocked = true);
+        if (mounted) setState(() => _isBlocked = true);
         return;
       }
     }
 
-    final history = await ChatPersistenceService.loadHistory(_bookId);
+    final history = await _persistenceService.loadHistory(_userId, _bookId);
     _provider = FirebaseProvider(
       model: FirebaseAI.vertexAI().generativeModel(
         model: 'gemini-2.5-flash-lite',
@@ -56,7 +69,7 @@ class _ChatPageState extends State<ChatPage> {
       history: history,
     );
     _provider.addListener(_onHistoryChanged);
-    setState(() => _isLoading = false);
+    if (mounted) setState(() => _isLoading = false);
   }
 
   Future<bool> _checkSessionLimit() async {
@@ -73,7 +86,7 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   void _onHistoryChanged() {
-    ChatPersistenceService.saveHistory(_bookId, _provider.history);
+    _persistenceService.saveHistory(_userId, _bookId, _provider.history);
     _trackMessageUsage();
   }
 
@@ -337,7 +350,7 @@ $description
                     ),
                     TextButton(
                       onPressed: () {
-                        ChatPersistenceService.clearHistory(_bookId);
+                        _persistenceService.clearHistory(_userId, _bookId);
                         _provider.history = [];
                         Navigator.pop(ctx);
                       },

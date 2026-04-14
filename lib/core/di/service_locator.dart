@@ -33,18 +33,18 @@ import '../../data/repositories/book_search_repository_impl.dart';
 import '../../domain/repositories/book_search_repository.dart';
 
 // BLoCs
+import '../../presentation/blocs/auth/auth_bloc.dart';
 import '../../presentation/blocs/book_bloc.dart';
 import '../../presentation/blocs/book_search_bloc.dart';
 import '../../presentation/blocs/folder_bloc.dart';
 import '../../presentation/blocs/lend_bloc.dart';
 
 // Services
+import '../services/chat_persistence_service.dart';
+import '../services/logging_service.dart';
 import '../services/subscription_service.dart';
 import '../services/remote_config_service.dart';
 import '../services/secret_provider.dart';
-
-// Providers
-import '../../presentation/providers/auth_state_provider.dart';
 
 final getIt = GetIt.instance;
 
@@ -127,14 +127,11 @@ Future<void> setupServiceLocator() async {
   // Register data sources
   _registerDataSources();
 
-  // Register repositories
-  _registerRepositories();
-
   // Register services
   _registerServices();
 
-  // Register providers
-  _registerProviders();
+  // Register repositories
+  _registerRepositories();
 }
 
 void _registerDataSources() {
@@ -202,6 +199,7 @@ void _registerRepositories() {
   getIt.registerSingleton<BookRepository>(
     BookRepositoryImpl(
       remoteDataSource: getIt<BookRemoteDataSource>(),
+      logger: getIt<LoggingService>(),
     ),
   );
 
@@ -229,6 +227,14 @@ void _registerRepositories() {
 }
 
 void _registerServices() {
+  // Logging service
+  getIt.registerSingleton<LoggingService>(LoggingService());
+
+  // Chat persistence service
+  getIt.registerSingleton<ChatPersistenceService>(
+    ChatPersistenceService(getIt<FirebaseDatabase>()),
+  );
+
   // Subscription service (lazy — initialized after login)
   getIt.registerLazySingleton<SubscriptionService>(
     () => SubscriptionService(
@@ -238,6 +244,13 @@ void _registerServices() {
 
   // BLoCs - use registerFactory so each consumer gets a fresh instance
   // (singletons cause stale state across pages and sign-out/sign-in)
+  getIt.registerFactory<AuthBloc>(
+    () => AuthBloc(
+      authRepository: getIt<AuthRepository>(),
+      subscriptionService: getIt<SubscriptionService>(),
+    ),
+  );
+
   getIt.registerFactory<BookBloc>(
     () => BookBloc(
       repository: getIt<BookRepository>(),
@@ -261,11 +274,3 @@ void _registerServices() {
   );
 }
 
-void _registerProviders() {
-  // Auth state provider
-  getIt.registerSingleton<AuthStateProvider>(
-    AuthStateProvider(
-      authRepository: getIt<AuthRepository>(),
-    ),
-  );
-}

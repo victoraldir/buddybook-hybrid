@@ -7,9 +7,10 @@ import 'package:go_router/go_router.dart';
 import '../../../core/di/service_locator.dart';
 import '../../../domain/entities/book.dart';
 import '../../../domain/entities/lend.dart';
+import '../../blocs/auth/auth_bloc.dart';
+import '../../blocs/auth/auth_state.dart';
 import '../../blocs/book_bloc.dart';
 import '../../blocs/lend_bloc.dart';
-import '../../providers/auth_state_provider.dart';
 
 class BookDetailPage extends StatefulWidget {
   final String bookId;
@@ -31,11 +32,13 @@ class _BookDetailPageState extends State<BookDetailPage> {
     _bookBloc = getIt<BookBloc>();
     _lendBloc = getIt<LendBloc>();
 
-    final authProvider = context.read<AuthStateProvider>();
-    _bookBloc.add(FetchBookByIdEvent(
-      userId: authProvider.user!.uid,
-      bookId: widget.bookId,
-    ));
+    final authState = context.read<AuthBloc>().state;
+    if (authState is Authenticated) {
+      _bookBloc.add(FetchBookByIdEvent(
+        userId: authState.user.uid,
+        bookId: widget.bookId,
+      ));
+    }
   }
 
   @override
@@ -53,7 +56,9 @@ class _BookDetailPageState extends State<BookDetailPage> {
       builder: (context) => _LendDialog(
         book: _book!,
         onLend: (name, email) {
-          final authProvider = context.read<AuthStateProvider>();
+          final authState = context.read<AuthBloc>().state;
+          if (authState is! Authenticated) return;
+          
           final lend = Lend(
             receiverName: name,
             receiverEmail: email,
@@ -61,7 +66,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
           );
 
           _lendBloc.add(CreateLendEvent(
-            userId: authProvider.user!.uid,
+            userId: authState.user.uid,
             folderId: _book!.folderId ?? 'myBooksFolder',
             bookId: widget.bookId,
             lend: lend,
@@ -76,12 +81,14 @@ class _BookDetailPageState extends State<BookDetailPage> {
   void _returnBook() {
     if (_book == null || !_book!.isLent) return;
 
-    final authProvider = context.read<AuthStateProvider>();
-    _lendBloc.add(DeleteLendEvent(
-      userId: authProvider.user!.uid,
-      folderId: _book!.folderId ?? 'myBooksFolder',
-      bookId: widget.bookId,
-    ));
+    final authState = context.read<AuthBloc>().state;
+    if (authState is Authenticated) {
+      _lendBloc.add(DeleteLendEvent(
+        userId: authState.user.uid,
+        folderId: _book!.folderId ?? 'myBooksFolder',
+        bookId: widget.bookId,
+      ));
+    }
   }
 
   void _deleteBook() {
@@ -97,11 +104,13 @@ class _BookDetailPageState extends State<BookDetailPage> {
           ),
           ElevatedButton(
             onPressed: () {
-              final authProvider = context.read<AuthStateProvider>();
-              _bookBloc.add(DeleteBookEvent(
-                userId: authProvider.user!.uid,
-                bookId: widget.bookId,
-              ));
+              final authState = context.read<AuthBloc>().state;
+              if (authState is Authenticated) {
+                _bookBloc.add(DeleteBookEvent(
+                  userId: authState.user.uid,
+                  bookId: widget.bookId,
+                ));
+              }
               context.pop();
             },
             child: const Text('Delete'),
@@ -127,11 +136,13 @@ class _BookDetailPageState extends State<BookDetailPage> {
           _book = _book!.copyWith(annotation: savedText);
         });
         // Also re-fetch from Firebase to stay fully in sync
-        final authProvider = context.read<AuthStateProvider>();
-        _bookBloc.add(FetchBookByIdEvent(
-          userId: authProvider.user!.uid,
-          bookId: widget.bookId,
-        ));
+        final authState = context.read<AuthBloc>().state;
+        if (authState is Authenticated) {
+          _bookBloc.add(FetchBookByIdEvent(
+            userId: authState.user.uid,
+            bookId: widget.bookId,
+          ));
+        }
       }
     });
   }
@@ -147,11 +158,13 @@ class _BookDetailPageState extends State<BookDetailPage> {
         listener: (context, state) {
           if (state is LendCreated || state is LendDeleted) {
             // Re-fetch the book to reflect updated lend status
-            final authProvider = context.read<AuthStateProvider>();
-            _bookBloc.add(FetchBookByIdEvent(
-              userId: authProvider.user!.uid,
-              bookId: widget.bookId,
-            ));
+            final authState = context.read<AuthBloc>().state;
+            if (authState is Authenticated) {
+              _bookBloc.add(FetchBookByIdEvent(
+                userId: authState.user.uid,
+                bookId: widget.bookId,
+              ));
+            }
             if (state is LendCreated) {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Book lent successfully')),
@@ -203,12 +216,13 @@ class _BookDetailPageState extends State<BookDetailPage> {
                                 extra: _book);
                             if (result == true && context.mounted) {
                               // Re-fetch the book to show updated data
-                              final authProvider =
-                                  context.read<AuthStateProvider>();
-                              _bookBloc.add(FetchBookByIdEvent(
-                                userId: authProvider.user!.uid,
-                                bookId: widget.bookId,
-                              ));
+                              final authState = context.read<AuthBloc>().state;
+                              if (authState is Authenticated) {
+                                _bookBloc.add(FetchBookByIdEvent(
+                                  userId: authState.user.uid,
+                                  bookId: widget.bookId,
+                                ));
+                              }
                             }
                           }
                         : null,

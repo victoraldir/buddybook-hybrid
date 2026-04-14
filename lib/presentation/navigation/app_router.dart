@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../domain/entities/book.dart';
-import '../../presentation/providers/auth_state_provider.dart';
+import '../blocs/auth/auth_bloc.dart';
+import '../blocs/auth/auth_state.dart';
 import '../pages/auth/login_page.dart';
 import '../pages/auth/signup_page.dart';
 import '../pages/auth/forgot_password_page.dart';
@@ -20,16 +22,18 @@ import '../pages/folders/folder_books_page.dart';
 import '../pages/lends/lend_tracking_page.dart';
 import '../pages/settings/settings_page.dart';
 
-GoRouter createRouter({required AuthStateProvider authProvider}) {
+GoRouter createRouter({required AuthBloc authBloc}) {
   return GoRouter(
     initialLocation: '/',
+    refreshListenable: GoRouterRefreshStream(authBloc.stream),
     redirect: (context, state) {
-      final isLoggedIn = authProvider.isAuthenticated;
+      final authState = authBloc.state;
+      final isLoggedIn = authState is Authenticated;
       final isAuthRoute = state.matchedLocation == '/login' ||
           state.matchedLocation == '/signup' ||
           state.matchedLocation == '/forgot-password';
 
-      // If user is not logged in and not on auth routes, redirect to splash
+      // If user is not logged in and not on auth routes, redirect to splash or login
       if (!isLoggedIn && !isAuthRoute && state.matchedLocation != '/') {
         return '/';
       }
@@ -150,4 +154,22 @@ GoRouter createRouter({required AuthStateProvider authProvider}) {
       ),
     ],
   );
+}
+
+/// A simple class to convert a stream into a Listenable for GoRouter
+class GoRouterRefreshStream extends ChangeNotifier {
+  GoRouterRefreshStream(Stream<dynamic> stream) {
+    notifyListeners();
+    _subscription = stream.asBroadcastStream().listen(
+          (dynamic _) => notifyListeners(),
+        );
+  }
+
+  late final StreamSubscription<dynamic> _subscription;
+
+  @override
+  void dispose() {
+    _subscription.cancel();
+    super.dispose();
+  }
 }

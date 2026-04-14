@@ -1,0 +1,2 @@
+/Users/vmontes/buddybook_migration/buddybook_flutter/android/app/.cxx/debug/2k4yf4b3/armeabi-v7a/CMakeFiles/edit_cache.dir
+/Users/vmontes/buddybook_migration/buddybook_flutter/android/app/.cxx/debug/2k4yf4b3/armeabi-v7a/CMakeFiles/rebuild_cache.dir
