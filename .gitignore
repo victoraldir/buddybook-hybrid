@@ -7,13 +7,14 @@ pubspec.lock
 build/
 
 # Android
+android/.gradle/
 android/app/debug/
 android/app/profile/
 android/app/release/
-android/gradlew
-android/gradlew.bat
-android/gradle/wrapper/gradle-wrapper.jar
-android/gradle/wrapper/gradle-wrapper.properties
+android/local.properties
+android/captured_screenshots/
+*.keystore
+*.jks
 
 # iOS
 ios/Flutter/Flutter.podspec
@@ -26,6 +27,7 @@ ios/Podfile.lock
 # IDE
 .idea/
 .vscode/
+*.iml
 *.swp
 *.swo
 *~

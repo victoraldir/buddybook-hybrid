@@ -37,20 +37,38 @@ class _HomePageState extends State<HomePage> {
     _bookBloc = getIt<BookBloc>();
     _folderBloc = getIt<FolderBloc>();
 
-    // Defer loading until after initial auth state check
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final authProvider = context.read<AuthStateProvider>();
-      if (authProvider.user != null) {
-        // Use real-time subscriptions instead of one-shot fetch
-        _bookBloc.add(SubscribeUserBooksEvent(userId: authProvider.user!.uid));
-        _folderBloc
-            .add(SubscribeUserFoldersEvent(userId: authProvider.user!.uid));
-      }
-    });
+    // Subscribe to auth changes to load data when user becomes available.
+    // This prevents infinite loading if auth state is still initializing.
+    _initDataSubscription();
+  }
+
+  void _initDataSubscription() {
+    final authProvider = context.read<AuthStateProvider>();
+    if (authProvider.user != null) {
+      _loadData(authProvider.user!.uid);
+    } else {
+      authProvider.addListener(_onAuthChanged);
+    }
+  }
+
+  void _onAuthChanged() {
+    final authProvider = context.read<AuthStateProvider>();
+    if (authProvider.user != null) {
+      _loadData(authProvider.user!.uid);
+      authProvider.removeListener(_onAuthChanged);
+    }
+  }
+
+  void _loadData(String userId) {
+    _bookBloc.add(SubscribeUserBooksEvent(userId: userId));
+    _folderBloc.add(SubscribeUserFoldersEvent(userId: userId));
   }
 
   @override
   void dispose() {
+    // Ensure listener is removed
+    getIt<AuthStateProvider>().removeListener(_onAuthChanged);
+
     _searchController.dispose();
     _searchFocusNode.dispose();
     _bookBloc.close();
