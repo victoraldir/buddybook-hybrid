@@ -4,14 +4,15 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
 import 'firebase_options.dart';
 import 'core/di/service_locator.dart' as di;
 import 'core/constants/env_constants.dart';
 import 'core/services/subscription_service.dart';
 import 'config/theme.dart';
-import 'presentation/providers/auth_state_provider.dart';
+import 'package:buddybook_flutter/l10n/app_localizations.dart';
+import 'presentation/blocs/auth/auth_bloc.dart';
 import 'presentation/navigation/app_router.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -84,14 +85,15 @@ class BuddyBookApp extends StatefulWidget {
 class _BuddyBookAppState extends State<BuddyBookApp>
     with WidgetsBindingObserver {
   late GoRouter _router;
-  late AuthStateProvider _authProvider;
+  late AuthBloc _authBloc;
   SubscriptionService? _subscriptionService;
 
   @override
   void initState() {
     super.initState();
-    _authProvider = di.getIt<AuthStateProvider>();
-    _router = createRouter(authProvider: _authProvider);
+    _authBloc = di.getIt<AuthBloc>();
+    _authBloc.add(AuthCheckRequested());
+    _router = createRouter(authBloc: _authBloc);
 
     // Register for app lifecycle changes to sync subscription status
     WidgetsBinding.instance.addObserver(this);
@@ -105,6 +107,7 @@ class _BuddyBookAppState extends State<BuddyBookApp>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _authBloc.close();
     super.dispose();
   }
 
@@ -116,14 +119,16 @@ class _BuddyBookAppState extends State<BuddyBookApp>
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider<AuthStateProvider>.value(
-      value: _authProvider,
+    return BlocProvider<AuthBloc>.value(
+      value: _authBloc,
       child: MaterialApp.router(
         title: 'BuddyBook',
         theme: AppTheme.lightTheme,
         darkTheme: AppTheme.darkTheme,
         themeMode: ThemeMode.system,
         routerConfig: _router,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
       ),
     );
   }

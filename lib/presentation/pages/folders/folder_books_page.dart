@@ -6,8 +6,9 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/di/service_locator.dart';
 
+import '../../blocs/auth/auth_bloc.dart';
+import '../../blocs/auth/auth_state.dart';
 import '../../blocs/book_bloc.dart';
-import '../../providers/auth_state_provider.dart';
 import '../../widgets/books/book_grid_item.dart';
 
 class FolderBooksPage extends StatefulWidget {
@@ -32,12 +33,14 @@ class _FolderBooksPageState extends State<FolderBooksPage> {
     super.initState();
     _bookBloc = getIt<BookBloc>();
 
-    final authProvider = context.read<AuthStateProvider>();
-    // Subscribe to real-time book updates for this folder
-    _bookBloc.add(SubscribeBooksByFolderEvent(
-      userId: authProvider.user!.uid,
-      folderId: widget.folderId,
-    ));
+    final authState = context.read<AuthBloc>().state;
+    if (authState is Authenticated) {
+      // Subscribe to real-time book updates for this folder
+      _bookBloc.add(SubscribeBooksByFolderEvent(
+        userId: authState.user.uid,
+        folderId: widget.folderId,
+      ));
+    }
   }
 
   @override
@@ -138,11 +141,13 @@ class _FolderBooksPageState extends State<FolderBooksPage> {
                     const SizedBox(height: 16),
                     ElevatedButton(
                       onPressed: () {
-                        final authProvider = context.read<AuthStateProvider>();
-                        _bookBloc.add(SubscribeBooksByFolderEvent(
-                          userId: authProvider.user!.uid,
-                          folderId: widget.folderId,
-                        ));
+                        final authState = context.read<AuthBloc>().state;
+                        if (authState is Authenticated) {
+                          _bookBloc.add(SubscribeBooksByFolderEvent(
+                            userId: authState.user.uid,
+                            folderId: widget.folderId,
+                          ));
+                        }
                       },
                       child: const Text('Retry'),
                     ),

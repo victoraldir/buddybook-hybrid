@@ -1,0 +1,17 @@
+{
+  "appTitle": "BuddyBook",
+  "welcomeBack": "Welcome Back",
+  "signInSubtitle": "Sign in to your BuddyBook account",
+  "emailLabel": "Email",
+  "passwordLabel": "Password",
+  "signInButton": "Sign In",
+  "signUpLink": "Don't have an account? Sign Up",
+  "forgotPassword": "Forgot Password?",
+  "homeTitle": "My Library",
+  "searchPlaceholder": "Search by title, author, or ISBN...",
+  "noBooksFound": "No books found in your library.",
+  "addBookTooltip": "Add a new book",
+  "scanBarcode": "Scan Barcode",
+  "settingsTitle": "Settings",
+  "logoutButton": "Log Out"
+}

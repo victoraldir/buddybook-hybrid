@@ -7,8 +7,9 @@ import 'package:go_router/go_router.dart';
 import '../../../core/di/service_locator.dart';
 import '../../../core/services/subscription_service.dart';
 import '../../../domain/entities/folder.dart';
+import '../../blocs/auth/auth_bloc.dart';
+import '../../blocs/auth/auth_state.dart';
 import '../../blocs/folder_bloc.dart';
-import '../../providers/auth_state_provider.dart';
 import '../../widgets/subscription/upgrade_dialog.dart';
 
 class FolderManagementPage extends StatefulWidget {
@@ -26,8 +27,10 @@ class _FolderManagementPageState extends State<FolderManagementPage> {
     super.initState();
     _folderBloc = getIt<FolderBloc>();
 
-    final authProvider = context.read<AuthStateProvider>();
-    _folderBloc.add(SubscribeUserFoldersEvent(userId: authProvider.user!.uid));
+    final authState = context.read<AuthBloc>().state;
+    if (authState is Authenticated) {
+      _folderBloc.add(SubscribeUserFoldersEvent(userId: authState.user.uid));
+    }
   }
 
   @override
@@ -65,17 +68,19 @@ class _FolderManagementPageState extends State<FolderManagementPage> {
                 return;
               }
 
-              final authProvider = context.read<AuthStateProvider>();
-              final folder = Folder(
-                id: DateTime.now().millisecondsSinceEpoch.toString(),
-                description: name,
-                isCustom: true,
-              );
+              final authState = context.read<AuthBloc>().state;
+              if (authState is Authenticated) {
+                final folder = Folder(
+                  id: DateTime.now().millisecondsSinceEpoch.toString(),
+                  description: name,
+                  isCustom: true,
+                );
 
-              _folderBloc.add(CreateFolderEvent(
-                userId: authProvider.user!.uid,
-                folder: folder,
-              ));
+                _folderBloc.add(CreateFolderEvent(
+                  userId: authState.user.uid,
+                  folder: folder,
+                ));
+              }
 
               context.pop();
             },
@@ -115,14 +120,16 @@ class _FolderManagementPageState extends State<FolderManagementPage> {
                 return;
               }
 
-              final authProvider = context.read<AuthStateProvider>();
-              final updatedFolder = folder.copyWith(description: name);
+              final authState = context.read<AuthBloc>().state;
+              if (authState is Authenticated) {
+                final updatedFolder = folder.copyWith(description: name);
 
-              _folderBloc.add(UpdateFolderEvent(
-                userId: authProvider.user!.uid,
-                folderId: folder.id,
-                folder: updatedFolder,
-              ));
+                _folderBloc.add(UpdateFolderEvent(
+                  userId: authState.user.uid,
+                  folderId: folder.id,
+                  folder: updatedFolder,
+                ));
+              }
 
               context.pop();
             },
@@ -146,11 +153,13 @@ class _FolderManagementPageState extends State<FolderManagementPage> {
           ),
           ElevatedButton(
             onPressed: () {
-              final authProvider = context.read<AuthStateProvider>();
-              _folderBloc.add(DeleteFolderEvent(
-                userId: authProvider.user!.uid,
-                folderId: folder.id,
-              ));
+              final authState = context.read<AuthBloc>().state;
+              if (authState is Authenticated) {
+                _folderBloc.add(DeleteFolderEvent(
+                  userId: authState.user.uid,
+                  folderId: folder.id,
+                ));
+              }
               context.pop();
             },
             child: const Text('Delete'),
@@ -171,14 +180,13 @@ class _FolderManagementPageState extends State<FolderManagementPage> {
         body: BlocListener<FolderBloc, FolderState>(
           listener: (context, state) {
             if (state is FolderLimitExceeded) {
-              final authProvider = context.read<AuthStateProvider>();
               final subService = getIt<SubscriptionService>();
               subService.getFolderCount().then((count) {
                 if (context.mounted) {
                   showUpgradeDialog(
                     context,
                     currentCount: count,
-                    maxBooks: authProvider.maxBooks,
+                    maxBooks: subService.maxBooks,
                   );
                 }
               });
@@ -277,15 +285,16 @@ class _FolderManagementPageState extends State<FolderManagementPage> {
                       Text('Error: ${state.message}'),
                       const SizedBox(height: 16),
                       ElevatedButton(
-                        onPressed: () {
-                          final authProvider =
-                              context.read<AuthStateProvider>();
+                      onPressed: () {
+                        final authState = context.read<AuthBloc>().state;
+                        if (authState is Authenticated) {
                           _folderBloc.add(FetchUserFoldersEvent(
-                            userId: authProvider.user!.uid,
+                            userId: authState.user.uid,
                           ));
-                        },
-                        child: const Text('Retry'),
-                      ),
+                        }
+                      },
+                      child: const Text('Retry'),
+                    ),
                     ],
                   ),
                 );
