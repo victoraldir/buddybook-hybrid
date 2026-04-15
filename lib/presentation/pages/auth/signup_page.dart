@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
-
-import '../../providers/auth_state_provider.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:buddybook_flutter/presentation/blocs/auth/auth_bloc.dart';
+import 'package:buddybook_flutter/presentation/blocs/auth/auth_event.dart';
+import 'package:buddybook_flutter/presentation/blocs/auth/auth_state.dart';
 import '../../widgets/auth/email_input_field.dart';
 import '../../widgets/auth/password_input_field.dart';
 
@@ -58,24 +59,21 @@ class _SignUpPageState extends State<SignUpPage> {
         elevation: 0,
         backgroundColor: Colors.transparent,
       ),
-      body: Consumer<AuthStateProvider>(
-        builder: (context, authProvider, _) {
-          if (authProvider.errorMessage != null) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(authProvider.errorMessage!),
-                  backgroundColor: Colors.red,
-                  action: SnackBarAction(
-                    label: 'Dismiss',
-                    onPressed: () {
-                      authProvider.clearError();
-                    },
-                  ),
-                ),
-              );
-            });
+      body: BlocConsumer<AuthBloc, AuthState>(
+        listener: (context, state) {
+          if (state is AuthError) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(state.message),
+                backgroundColor: Colors.red,
+              ),
+            );
+          } else if (state is Authenticated) {
+            context.go('/home');
           }
+        },
+        builder: (context, state) {
+          final isLoading = state is AuthLoading;
 
           return SingleChildScrollView(
             child: Padding(
@@ -145,7 +143,7 @@ class _SignUpPageState extends State<SignUpPage> {
                     controller: _confirmPasswordController,
                     focusNode: _confirmPasswordFocus,
                     onFieldSubmitted: (_) {
-                      _handleSignUp(context, authProvider);
+                      _handleSignUp(context);
                     },
                   ),
                   const SizedBox(height: 16),
@@ -180,10 +178,10 @@ class _SignUpPageState extends State<SignUpPage> {
 
                   // Sign Up Button
                   ElevatedButton(
-                    onPressed: authProvider.isLoading
+                    onPressed: isLoading
                         ? null
-                        : () => _handleSignUp(context, authProvider),
-                    child: authProvider.isLoading
+                        : () => _handleSignUp(context),
+                    child: isLoading
                         ? const SizedBox(
                             height: 20,
                             width: 20,
@@ -213,10 +211,7 @@ class _SignUpPageState extends State<SignUpPage> {
     );
   }
 
-  Future<void> _handleSignUp(
-    BuildContext context,
-    AuthStateProvider authProvider,
-  ) async {
+  Future<void> _handleSignUp(BuildContext context) async {
     final email = _emailController.text.trim();
     final username = _usernameController.text.trim();
     final password = _passwordController.text;
@@ -224,7 +219,6 @@ class _SignUpPageState extends State<SignUpPage> {
 
     // Validation
     if (email.isEmpty || username.isEmpty || password.isEmpty) {
-      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Please fill in all fields'),
@@ -235,7 +229,6 @@ class _SignUpPageState extends State<SignUpPage> {
     }
 
     if (password != confirmPassword) {
-      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Passwords do not match'),
@@ -246,7 +239,6 @@ class _SignUpPageState extends State<SignUpPage> {
     }
 
     if (password.length < 6) {
-      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Password must be at least 6 characters'),
@@ -257,7 +249,6 @@ class _SignUpPageState extends State<SignUpPage> {
     }
 
     if (!_agreeToTerms) {
-      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Please agree to the Terms & Conditions'),
@@ -267,13 +258,12 @@ class _SignUpPageState extends State<SignUpPage> {
       return;
     }
 
-    final success = await authProvider.signUp(
-      email: email,
-      password: password,
-      username: username,
-    );
-    if (success && context.mounted) {
-      context.go('/home');
-    }
+    context.read<AuthBloc>().add(
+          AuthSignUpRequested(
+            email: email,
+            password: password,
+            username: username,
+          ),
+        );
   }
 }

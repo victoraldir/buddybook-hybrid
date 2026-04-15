@@ -1,14 +1,15 @@
 // lib/presentation/pages/settings/settings_page.dart
 
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
+import 'package:buddybook_flutter/l10n/app_localizations.dart';
 
 import '../../../config/theme.dart';
 import '../../../core/di/service_locator.dart';
 import '../../../core/services/subscription_service.dart';
 import '../../../core/utils/book_export_util.dart';
-import '../../providers/auth_state_provider.dart';
+import '../../blocs/auth/auth_bloc.dart';
 import '../../widgets/subscription/upgrade_dialog.dart';
 
 class SettingsPage extends StatefulWidget {
@@ -41,18 +42,19 @@ class _SettingsPageState extends State<SettingsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Settings'),
+        title: Text(l10n.settingsTitle),
       ),
-      body: Consumer<AuthStateProvider>(
-        builder: (context, authProvider, _) {
-          if (authProvider.user == null) {
+      body: BlocBuilder<AuthBloc, AuthState>(
+        builder: (context, state) {
+          if (state is! Authenticated) {
             return const Center(child: Text('Not authenticated'));
           }
 
-          final user = authProvider.user!;
-          final isPremium = authProvider.isPremium;
+          final user = state.user;
+          final isPremium = user.tier == 'paid';
           final subService = getIt<SubscriptionService>();
 
           return ListView(
@@ -195,7 +197,7 @@ class _SettingsPageState extends State<SettingsPage> {
                                     ),
                                     const SizedBox(width: 8),
                                     Text(
-                                      authProvider.tierLabel.toUpperCase(),
+                                      subService.tierLabel.toUpperCase(),
                                       style: TextStyle(
                                         fontWeight: FontWeight.bold,
                                         color: isPremium
@@ -236,7 +238,7 @@ class _SettingsPageState extends State<SettingsPage> {
                             ] else ...[
                               _buildBenefitRow(
                                 Icons.check_circle,
-                                '$_bookCount / ${authProvider.maxBooks} books',
+                                '$_bookCount / ${subService.maxBooks} books',
                                 true,
                                 subtext:
                                     _isLoadingBookCount ? 'Loading...' : null,
@@ -260,7 +262,7 @@ class _SettingsPageState extends State<SettingsPage> {
                                   onPressed: () => showUpgradeDialog(
                                     context,
                                     currentCount: _bookCount,
-                                    maxBooks: authProvider.maxBooks,
+                                    maxBooks: subService.maxBooks,
                                   ),
                                   icon: const Icon(Icons.upgrade),
                                   label: const Text('Upgrade to Premium'),
@@ -364,7 +366,7 @@ class _SettingsPageState extends State<SettingsPage> {
                                 showUpgradeDialog(
                                   context,
                                   currentCount: _bookCount,
-                                  maxBooks: authProvider.maxBooks,
+                                  maxBooks: subService.maxBooks,
                                 );
                                 return;
                               }
@@ -395,30 +397,27 @@ class _SettingsPageState extends State<SettingsPage> {
                     const SizedBox(height: 8),
                     ListTile(
                       leading: const Icon(Icons.logout),
-                      title: const Text('Sign Out'),
+                      title: Text(l10n.logoutButton),
                       onTap: () {
-                        final pageContext = context;
                         showDialog(
                           context: context,
                           builder: (dialogContext) => AlertDialog(
-                            title: const Text('Sign Out'),
+                            title: Text(l10n.logoutButton),
                             content: const Text(
                               'Are you sure you want to sign out?',
                             ),
                             actions: [
                               TextButton(
-                                onPressed: () => dialogContext.pop(),
+                                onPressed: () => Navigator.of(dialogContext).pop(),
                                 child: const Text('Cancel'),
                               ),
                               ElevatedButton(
-                                onPressed: () async {
-                                  dialogContext.pop();
-                                  await authProvider.signOut();
-                                  if (pageContext.mounted) {
-                                    pageContext.go('/login');
-                                  }
+                                onPressed: () {
+                                  Navigator.of(dialogContext).pop();
+                                  context.read<AuthBloc>().add(AuthSignOutRequested());
+                                  context.go('/login');
                                 },
-                                child: const Text('Sign Out'),
+                                child: Text(l10n.logoutButton),
                               ),
                             ],
                           ),
@@ -497,11 +496,11 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _exportLibrary() async {
-    final authProvider = context.read<AuthStateProvider>();
-    if (authProvider.user == null) return;
+    final authState = context.read<AuthBloc>().state;
+    if (authState is! Authenticated) return;
 
     try {
-      final userId = authProvider.user!.uid;
+      final userId = authState.user.uid;
       final result = await BookExportUtil.exportBooksAsCSV(
         userId: userId,
         context: context,

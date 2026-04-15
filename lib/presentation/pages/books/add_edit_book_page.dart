@@ -9,9 +9,10 @@ import 'package:image_picker/image_picker.dart';
 import '../../../core/di/service_locator.dart';
 import '../../../domain/entities/book.dart';
 import '../../../domain/entities/volume_info.dart';
-import '../../blocs/book_bloc.dart';
-import '../../blocs/folder_bloc.dart';
-import '../../providers/auth_state_provider.dart';
+import 'package:buddybook_flutter/presentation/blocs/auth/auth_bloc.dart';
+import 'package:buddybook_flutter/presentation/blocs/auth/auth_state.dart';
+import 'package:buddybook_flutter/presentation/blocs/book_bloc.dart';
+import 'package:buddybook_flutter/presentation/blocs/folder_bloc.dart';
 import '../../widgets/folders/folder_selector.dart';
 import '../../widgets/subscription/upgrade_dialog.dart';
 
@@ -44,8 +45,10 @@ class _AddEditBookPageState extends State<AddEditBookPage> {
     _selectedFolderId = widget.book?.folderId;
 
     // Fetch folders
-    final authProvider = context.read<AuthStateProvider>();
-    _folderBloc.add(FetchUserFoldersEvent(userId: authProvider.user!.uid));
+    final authState = context.read<AuthBloc>().state;
+    if (authState is Authenticated) {
+      _folderBloc.add(FetchUserFoldersEvent(userId: authState.user.uid));
+    }
 
     _titleController = TextEditingController(
       text: widget.book?.volumeInfo.title ?? '',
@@ -181,12 +184,13 @@ class _AddEditBookPageState extends State<AddEditBookPage> {
       folderId: _selectedFolderId,
     );
 
-    final authProvider = context.read<AuthStateProvider>();
+    final authState = context.read<AuthBloc>().state;
+    if (authState is! Authenticated) return;
 
     if (widget.book != null) {
       // Update existing book
       _bookBloc.add(UpdateBookEvent(
-        userId: authProvider.user!.uid,
+        userId: authState.user.uid,
         bookId: widget.book!.id,
         book: book,
         coverImage: _selectedImage,
@@ -194,7 +198,7 @@ class _AddEditBookPageState extends State<AddEditBookPage> {
     } else {
       // Create new book
       _bookBloc.add(CreateBookEvent(
-        userId: authProvider.user!.uid,
+        userId: authState.user.uid,
         book: book,
         coverImage: _selectedImage,
       ));

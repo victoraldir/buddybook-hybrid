@@ -5,9 +5,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../core/di/service_locator.dart';
 import '../../../domain/entities/book.dart';
+import '../../blocs/auth/auth_bloc.dart';
+import '../../blocs/auth/auth_state.dart';
 import '../../blocs/book_bloc.dart';
 import '../../blocs/lend_bloc.dart';
-import '../../providers/auth_state_provider.dart';
 import '../../widgets/lends/lend_item.dart';
 
 class LendTrackingPage extends StatefulWidget {
@@ -27,9 +28,11 @@ class _LendTrackingPageState extends State<LendTrackingPage> {
     _bookBloc = getIt<BookBloc>();
     _lendBloc = getIt<LendBloc>();
 
-    final authProvider = context.read<AuthStateProvider>();
-    _lendBloc.add(SubscribeUserLendsEvent(userId: authProvider.user!.uid));
-    _bookBloc.add(SubscribeUserBooksEvent(userId: authProvider.user!.uid));
+    final authState = context.read<AuthBloc>().state;
+    if (authState is Authenticated) {
+      _lendBloc.add(SubscribeUserLendsEvent(userId: authState.user.uid));
+      _bookBloc.add(SubscribeUserBooksEvent(userId: authState.user.uid));
+    }
   }
 
   @override
@@ -127,18 +130,19 @@ class _LendTrackingPageState extends State<LendTrackingPage> {
                           book: book,
                           lend: book.lend!,
                           onReturnBook: () {
-                            final authProvider =
-                                context.read<AuthStateProvider>();
-                            _lendBloc.add(DeleteLendEvent(
-                              userId: authProvider.user!.uid,
-                              folderId: book.folderId ?? 'myBooksFolder',
-                              bookId: book.id,
-                            ));
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Book marked as returned'),
-                              ),
-                            );
+                            final authState = context.read<AuthBloc>().state;
+                            if (authState is Authenticated) {
+                              _lendBloc.add(DeleteLendEvent(
+                                userId: authState.user.uid,
+                                folderId: book.folderId ?? 'myBooksFolder',
+                                bookId: book.id,
+                              ));
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Book marked as returned'),
+                                ),
+                              );
+                            }
                           },
                         );
                       },
@@ -163,10 +167,12 @@ class _LendTrackingPageState extends State<LendTrackingPage> {
                     const SizedBox(height: 16),
                     ElevatedButton(
                       onPressed: () {
-                        final authProvider = context.read<AuthStateProvider>();
-                        _lendBloc.add(SubscribeUserLendsEvent(
-                          userId: authProvider.user!.uid,
-                        ));
+                        final authState = context.read<AuthBloc>().state;
+                        if (authState is Authenticated) {
+                          _lendBloc.add(SubscribeUserLendsEvent(
+                            userId: authState.user.uid,
+                          ));
+                        }
                       },
                       child: const Text('Retry'),
                     ),

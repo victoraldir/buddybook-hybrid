@@ -2,16 +2,17 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:buddybook_flutter/l10n/app_localizations.dart';
 import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
 
 import '../../../core/di/service_locator.dart';
 import '../../../core/services/subscription_service.dart';
 import '../../../domain/entities/book.dart';
 import '../../blocs/book_bloc.dart';
 import '../../blocs/folder_bloc.dart';
-import '../../providers/auth_state_provider.dart';
+import '../../blocs/auth/auth_bloc.dart';
 import '../../widgets/books/book_grid_item.dart';
+import '../../widgets/books/book_skeleton.dart';
 import '../../widgets/subscription/upgrade_dialog.dart';
 
 class HomePage extends StatefulWidget {
@@ -37,25 +38,10 @@ class _HomePageState extends State<HomePage> {
     _bookBloc = getIt<BookBloc>();
     _folderBloc = getIt<FolderBloc>();
 
-    // Subscribe to auth changes to load data when user becomes available.
-    // This prevents infinite loading if auth state is still initializing.
-    _initDataSubscription();
-  }
-
-  void _initDataSubscription() {
-    final authProvider = context.read<AuthStateProvider>();
-    if (authProvider.user != null) {
-      _loadData(authProvider.user!.uid);
-    } else {
-      authProvider.addListener(_onAuthChanged);
-    }
-  }
-
-  void _onAuthChanged() {
-    final authProvider = context.read<AuthStateProvider>();
-    if (authProvider.user != null) {
-      _loadData(authProvider.user!.uid);
-      authProvider.removeListener(_onAuthChanged);
+    // Initial load if already authenticated
+    final authState = context.read<AuthBloc>().state;
+    if (authState is Authenticated) {
+      _loadData(authState.user.uid);
     }
   }
 
@@ -66,9 +52,6 @@ class _HomePageState extends State<HomePage> {
 
   @override
   void dispose() {
-    // Ensure listener is removed
-    getIt<AuthStateProvider>().removeListener(_onAuthChanged);
-
     _searchController.dispose();
     _searchFocusNode.dispose();
     _bookBloc.close();
@@ -113,6 +96,7 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return PopScope(
       canPop: !_isSearching,
       onPopInvokedWithResult: (didPop, result) {
@@ -128,9 +112,9 @@ class _HomePageState extends State<HomePage> {
                   focusNode: _searchFocusNode,
                   autofocus: true,
                   style: const TextStyle(color: Colors.white, fontSize: 18),
-                  decoration: const InputDecoration(
-                    hintText: 'Search my books...',
-                    hintStyle: TextStyle(color: Colors.white70),
+                  decoration: InputDecoration(
+                    hintText: l10n.searchPlaceholder,
+                    hintStyle: const TextStyle(color: Colors.white70),
                     border: InputBorder.none,
                     enabledBorder: InputBorder.none,
                     focusedBorder: InputBorder.none,
@@ -145,12 +129,11 @@ class _HomePageState extends State<HomePage> {
                   },
                 )
               : RichText(
-                  text: TextSpan(
-                    style: const TextStyle(
+                  text: const TextSpan(
+                    style: TextStyle(
                       fontSize: 23,
                       fontWeight: FontWeight.w600,
-                      fontFamily:
-                          'Roboto', // Using Material Design's clean sans-serif
+                      fontFamily: 'Roboto',
                       color: Colors.white,
                       letterSpacing: 0.5,
                     ),
@@ -160,14 +143,14 @@ class _HomePageState extends State<HomePage> {
                         style: TextStyle(
                           fontWeight: FontWeight.w700,
                           color: Colors.white,
-                          fontSize: 24, // Slightly larger for emphasis
+                          fontSize: 24,
                         ),
                       ),
                       TextSpan(
                         text: 'Book',
                         style: TextStyle(
                           fontWeight: FontWeight.w500,
-                          color: Colors.white.withValues(alpha: 0.95),
+                          color: Colors.white60,
                         ),
                       ),
                     ],
@@ -194,9 +177,11 @@ class _HomePageState extends State<HomePage> {
                     ),
                 ]
               : [
-                  Consumer<AuthStateProvider>(
-                    builder: (context, authProvider, _) {
-                      if (!authProvider.isPremium) {
+                  BlocBuilder<AuthBloc, AuthState>(
+                    builder: (context, authState) {
+                      final isPremium = authState is Authenticated &&
+                          authState.user.tier == 'paid';
+                      if (!isPremium) {
                         return IconButton(
                           icon: const Icon(Icons.workspace_premium),
                           onPressed: () {
@@ -206,7 +191,7 @@ class _HomePageState extends State<HomePage> {
                                 showUpgradeDialog(
                                   context,
                                   currentCount: count,
-                                  maxBooks: authProvider.maxBooks,
+                                  maxBooks: getIt<SubscriptionService>().maxBooks,
                                 );
                               }
                             });
@@ -244,19 +229,19 @@ class _HomePageState extends State<HomePage> {
             BlocProvider.value(value: _bookBloc),
             BlocProvider.value(value: _folderBloc),
           ],
-          child: Consumer<AuthStateProvider>(
-            builder: (context, authProvider, _) {
+          child: BlocBuilder<AuthBloc, AuthState>(
+            builder: (context, authState) {
+              final user = authState is Authenticated ? authState.user : null;
+              
               // Check if user is not authenticated
-              if (authProvider.user == null) {
-                return const Center(
-                  child: CircularProgressIndicator(),
-                );
+              if (user == null) {
+                return const BookGridSkeleton();
               }
 
               return Column(
                 children: [
                   // Book count banner (hidden during search)
-                  if (!_isSearching && authProvider.user != null)
+                  if (!_isSearching)
                     BlocBuilder<BookBloc, BookState>(
                       builder: (context, bookState) {
                         final bookCount = bookState is BooksLoaded
@@ -296,9 +281,7 @@ class _HomePageState extends State<HomePage> {
                     child: BlocBuilder<BookBloc, BookState>(
                       builder: (context, state) {
                         if (state is BookLoading) {
-                          return const Center(
-                            child: CircularProgressIndicator(),
-                          );
+                          return const BookGridSkeleton();
                         } else if (state is BooksLoaded) {
                           final allBooks = state.books;
                           final books = _isSearching
@@ -406,7 +389,7 @@ class _HomePageState extends State<HomePage> {
                                 ElevatedButton(
                                   onPressed: () {
                                     _bookBloc.add(SubscribeUserBooksEvent(
-                                      userId: authProvider.user!.uid,
+                                      userId: user.uid,
                                     ));
                                   },
                                   child: const Text('Retry'),
@@ -416,9 +399,7 @@ class _HomePageState extends State<HomePage> {
                           );
                         }
 
-                        return const Center(
-                          child: CircularProgressIndicator(),
-                        );
+                        return const BookGridSkeleton();
                       },
                     ),
                   ),

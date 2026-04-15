@@ -13,6 +13,7 @@ android/app/profile/
 android/app/release/
 android/local.properties
 android/captured_screenshots/
+**/.cxx/
 *.keystore
 *.jks
 

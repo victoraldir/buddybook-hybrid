@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
-
-import '../../providers/auth_state_provider.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:buddybook_flutter/presentation/blocs/auth/auth_bloc.dart';
+import 'package:buddybook_flutter/presentation/blocs/auth/auth_event.dart';
+import 'package:buddybook_flutter/presentation/blocs/auth/auth_state.dart';
 import '../../widgets/auth/email_input_field.dart';
 
 class ForgotPasswordPage extends StatefulWidget {
@@ -39,24 +40,24 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
         elevation: 0,
         backgroundColor: Colors.transparent,
       ),
-      body: Consumer<AuthStateProvider>(
-        builder: (context, authProvider, _) {
-          if (authProvider.errorMessage != null) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(authProvider.errorMessage!),
-                  backgroundColor: Colors.red,
-                  action: SnackBarAction(
-                    label: 'Dismiss',
-                    onPressed: () {
-                      authProvider.clearError();
-                    },
-                  ),
-                ),
-              );
-            });
+      body: BlocConsumer<AuthBloc, AuthState>(
+        listener: (context, state) {
+          if (state is AuthError) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(state.message),
+                backgroundColor: Colors.red,
+              ),
+            );
+          } else if (state is Unauthenticated && _emailController.text.isNotEmpty) {
+             // In our implementation, resetPassword emits Unauthenticated
+             setState(() {
+               _emailSent = true;
+             });
           }
+        },
+        builder: (context, state) {
+          final isLoading = state is AuthLoading;
 
           return SingleChildScrollView(
             child: Padding(
@@ -89,17 +90,17 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                       controller: _emailController,
                       focusNode: _emailFocus,
                       onFieldSubmitted: (_) {
-                        _handleResetPassword(context, authProvider);
+                        _handleResetPassword(context);
                       },
                     ),
                     const SizedBox(height: 24),
 
                     // Send Reset Link Button
                     ElevatedButton(
-                      onPressed: authProvider.isLoading
+                      onPressed: isLoading
                           ? null
-                          : () => _handleResetPassword(context, authProvider),
-                      child: authProvider.isLoading
+                          : () => _handleResetPassword(context),
+                      child: isLoading
                           ? const SizedBox(
                               height: 20,
                               width: 20,
@@ -173,10 +174,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     );
   }
 
-  Future<void> _handleResetPassword(
-    BuildContext context,
-    AuthStateProvider authProvider,
-  ) async {
+  Future<void> _handleResetPassword(BuildContext context) async {
     final email = _emailController.text.trim();
 
     if (email.isEmpty) {
@@ -189,11 +187,6 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
       return;
     }
 
-    final success = await authProvider.resetPassword(email: email);
-    if (success && mounted) {
-      setState(() {
-        _emailSent = true;
-      });
-    }
+    context.read<AuthBloc>().add(AuthPasswordResetRequested(email: email));
   }
 }

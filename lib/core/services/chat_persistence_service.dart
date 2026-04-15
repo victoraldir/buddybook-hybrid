@@ -1,19 +1,24 @@
-import 'dart:convert';
-
+import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter_ai_toolkit/flutter_ai_toolkit.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../constants/firebase_constants.dart';
 
 class ChatPersistenceService {
-  static String _key(String bookId) => 'chat_history_$bookId';
+  final FirebaseDatabase _database;
 
-  static Future<List<ChatMessage>> loadHistory(String bookId) async {
-    final prefs = await SharedPreferences.getInstance();
-    final jsonStr = prefs.getString(_key(bookId));
-    if (jsonStr == null || jsonStr.isEmpty) return [];
+  ChatPersistenceService(this._database);
 
+  String _path(String userId, String bookId) => 
+      '${FirebaseConstants.usersPath}/$userId/${FirebaseConstants.booksPath}/$bookId/${FirebaseConstants.chatSessionsField}';
+
+  Future<List<ChatMessage>> loadHistory(String userId, String bookId) async {
     try {
-      final List<dynamic> jsonList = jsonDecode(jsonStr);
-      return jsonList
+      final snapshot = await _database.ref(_path(userId, bookId)).get();
+      if (!snapshot.exists || snapshot.value == null) return [];
+
+      final data = snapshot.value as Map<dynamic, dynamic>;
+      final List<dynamic> messages = data[FirebaseConstants.chatMessagesField] ?? [];
+      
+      return messages
           .map((item) => ChatMessage.fromJson(Map<String, dynamic>.from(item)))
           .toList();
     } catch (e) {
@@ -21,17 +26,27 @@ class ChatPersistenceService {
     }
   }
 
-  static Future<void> saveHistory(
+  Future<void> saveHistory(
+    String userId,
     String bookId,
     Iterable<ChatMessage> history,
   ) async {
-    final prefs = await SharedPreferences.getInstance();
-    final jsonList = history.map((msg) => msg.toJson()).toList();
-    await prefs.setString(_key(bookId), jsonEncode(jsonList));
+    try {
+      final jsonList = history.map((msg) => msg.toJson()).toList();
+      await _database.ref(_path(userId, bookId)).update({
+        FirebaseConstants.chatMessagesField: jsonList,
+        FirebaseConstants.chatTimestampField: ServerValue.timestamp,
+      });
+    } catch (e) {
+      // Log error
+    }
   }
 
-  static Future<void> clearHistory(String bookId) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_key(bookId));
+  Future<void> clearHistory(String userId, String bookId) async {
+    try {
+      await _database.ref(_path(userId, bookId)).remove();
+    } catch (e) {
+      // Log error
+    }
   }
 }

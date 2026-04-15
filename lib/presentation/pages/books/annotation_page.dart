@@ -4,8 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../core/di/service_locator.dart';
+import '../../blocs/auth/auth_bloc.dart';
+import '../../blocs/auth/auth_state.dart';
 import '../../blocs/book_bloc.dart';
-import '../../providers/auth_state_provider.dart';
 import '../../widgets/books/lined_text_field.dart';
 
 /// Full-screen annotation editor, replicating the original Java app's
@@ -60,12 +61,14 @@ class _AnnotationPageState extends State<AnnotationPage> {
     final text = _controller.text.trim();
     setState(() => _isSaving = true);
 
-    final authProvider = context.read<AuthStateProvider>();
-    _bookBloc.add(UpdateBookAnnotationEvent(
-      userId: authProvider.user!.uid,
-      bookId: widget.bookId,
-      annotation: text,
-    ));
+    final authState = context.read<AuthBloc>().state;
+    if (authState is Authenticated) {
+      _bookBloc.add(UpdateBookAnnotationEvent(
+        userId: authState.user.uid,
+        bookId: widget.bookId,
+        annotation: text,
+      ));
+    }
   }
 
   /// Called on back press / toolbar back arrow.
