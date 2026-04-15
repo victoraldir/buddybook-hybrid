@@ -1,1 +1,0 @@
-/Users/vmontes/buddybook_migration/buddybook_flutter/android/app/CMakeLists.txt
